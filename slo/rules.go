@@ -1162,12 +1162,23 @@ func (o Objective) GenericRules() (monitoringv1.RuleGroup, error) {
 		Expr:   intstr.FromInt(int(time.Duration(o.Window).Seconds())),
 		Labels: ruleLabels,
 	})
+	groupingRuleLabels := make(map[string]string, len(ruleLabels)+1)
+	for key, value := range ruleLabels {
+		groupingRuleLabels[key] = value
+	}
 
 	switch o.IndicatorType() {
 	case Ratio:
 		if len(o.Indicator.Ratio.Grouping) > 0 {
-			return monitoringv1.RuleGroup{}, ErrGroupingUnsupported
+			groupingRuleLabels["grouping"] = strings.Join(o.Indicator.Ratio.Grouping, ", ")
+		} else {
+			groupingRuleLabels["grouping"] = "none"
 		}
+		rules = append(rules, monitoringv1.Rule{
+			Record: "pyrra_grouping",
+			Expr:   intstr.FromInt(1),
+			Labels: groupingRuleLabels,
+		})
 
 		availability, err := parser.ParseExpr(`1 - sum(errorMetric{matchers="errors"} or vector(0)) / sum(metric{matchers="total"})`)
 		if err != nil {
@@ -1265,9 +1276,16 @@ func (o Objective) GenericRules() (monitoringv1.RuleGroup, error) {
 			Labels: ruleLabels,
 		})
 	case Latency:
-		if len(o.Indicator.Latency.Grouping) > 0 {
-			return monitoringv1.RuleGroup{}, ErrGroupingUnsupported
+		if len(o.Indicator.Ratio.Grouping) > 0 {
+			groupingRuleLabels["grouping"] = strings.Join(o.Indicator.Ratio.Grouping, ", ")
+		} else {
+			groupingRuleLabels["grouping"] = "none"
 		}
+		rules = append(rules, monitoringv1.Rule{
+			Record: "pyrra_grouping",
+			Expr:   intstr.FromInt(1),
+			Labels: groupingRuleLabels,
+		})
 
 		// availability
 		{
@@ -1385,9 +1403,16 @@ func (o Objective) GenericRules() (monitoringv1.RuleGroup, error) {
 		}
 
 	case BoolGauge:
-		if len(o.Indicator.BoolGauge.Grouping) > 0 {
-			return monitoringv1.RuleGroup{}, ErrGroupingUnsupported
+		if len(o.Indicator.Ratio.Grouping) > 0 {
+			groupingRuleLabels["grouping"] = strings.Join(o.Indicator.Ratio.Grouping, ", ")
+		} else {
+			groupingRuleLabels["grouping"] = "none"
 		}
+		rules = append(rules, monitoringv1.Rule{
+			Record: "pyrra_grouping",
+			Expr:   intstr.FromInt(1),
+			Labels: groupingRuleLabels,
+		})
 
 		totalMetric := countName(o.Indicator.BoolGauge.Metric.Name, o.Window)
 		totalMatchers := cloneMatchers(o.Indicator.BoolGauge.Metric.LabelMatchers)
